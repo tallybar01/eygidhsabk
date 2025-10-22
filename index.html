@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rank Change Request</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: 
+                linear-gradient(135deg, #154D71 0%, #1C6EA4 100%), /* Base gradient */
+                url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/FullMoon2010.jpg/800px-FullMoon2010.jpg') center/cover; /* Moon texture overlay - Replace with local file: url('./moon-texture.jpg') */
+            background-blend-mode: multiply; /* Blends texture with gradient for subtle moon effect */
+            background-size: cover; /* Ensures texture covers the full viewport */
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            transition: opacity 0.5s ease;
+            opacity: 0.95; /* Slight overall opacity to soften the texture if too strong */
+            position: relative; /* For absolute positioning of stars */
+            overflow: hidden; /* Prevent star overflow */
+        }
+
+        /* Stars Layer */
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Behind everything */
+            pointer-events: none; /* Don't interfere with clicks */
+        }
+
+        .star {
+            position: absolute;
+            border-radius: 50%;
+            animation: twinkle 2s infinite ease-in-out;
+        }
+
+        /* Twinkle Animation */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .form-container {
+            background: linear-gradient(135deg, #33A1E0 0%, #FFF9AF 100%); /* Custom gradient: #33A1E0 to #FFF9AF inside the form (no texture for readability) */
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 350px;
+            z-index: 1; /* Above stars */
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+        input, select, textarea, button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        button:hover {
+            background: #4338ca;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Stars Container -->
+    <div class="stars"></div> <!-- Empty - populated by JS -->
+
+    <div id="formContainer" class="form-container">
+        <h2>Staff Movements</h2>
+        <form id="rankForm">
+            <label for="requestType">Movement Type</label>
+            <select id="requestType" name="requestType" required>
+                <option value="">Select Type</option>
+                <option value="Promotion">Promotion</option>
+                <option value="Demotion">Demotion</option>
+                <option value="Resign">Resign</option>
+            </select>
+
+            <label for="discordId">Discord ID</label>
+            <input type="text" id="discordId" name="discordId" placeholder="e.g., 123456789012345678" required>
+            <div id="discordError" class="error">Discord ID must be a valid number (17-19 digits).</div>
+
+            <label for="mention">IGN (In-game name)</label>
+            <input type="text" id="mention" name="mention" required>
+
+            <label for="currentRank">Current Role</label>
+            <input type="text" id="currentRank" name="currentRank" required>
+
+            <label for="updatedRank">Updated Role</label>
+            <input type="text" id="updatedRank" name="updatedRank" required>
+
+            <label for="reason">Reason</label>
+            <textarea id="reason" name="reason" rows="3" placeholder="" required></textarea>
+
+            <button type="submit" id="submitBtn">Submit Request</button>
+        </form>
+    </div>
+
+    <!-- Inline JS for Dynamic Stars -->
+    <script>
+        // Generate 50 random twinkling stars
+        document.addEventListener('DOMContentLoaded', function() {
+            const starsContainer = document.querySelector('.stars');
+            const numStars = 499; // Change this to add more (e.g., 100)
+
+            for (let i = 0; i < numStars; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+
+                // Random position
+                const top = Math.random() * 100;
+                const left = Math.random() * 100;
+                star.style.top = top + '%';
+                star.style.left = left + '%';
+
+                // Random size (1-3px)
+                const size = Math.random() * 2 + 1; // 1 to 3
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+
+                // Random color: 80% white, 20% yellow
+                star.style.background = (Math.random() < 0.8) ? '#fff' : '#ffd700';
+
+                // Random animation delay and duration for variety
+                const delay = Math.random() * 2; // 0-2s
+                const duration = Math.random() * 2 + 1; // 1-3s
+                star.style.animationDelay = delay + 's';
+                star.style.animationDuration = duration + 's';
+
+                starsContainer.appendChild(star);
+            }
+        });
+    </script>
+
+    <!-- Form Logic JS -->
+    <script>
+        // WARNING: Client-side only – whitelist and secrets are visible! Not secure for public use.
+        // Change the webhook URLs as needed.
+
+        const webhookURLs = [
+            "https://discord.com/api/webhooks/1430627421216051262/UshFQbkv4ZVhMSbFDsk-cFzGr6N3Lql72Sj9iSR_g4aMfY697IyJZlt1ukIPb5jOfuJO",
+            "https://discord.com/api/webhooks/1421382701734301726/Mf7VZtePkcAapEEbj16bxdJY5w_bX1-ALHreKTMKcxV3VhN14_hKI_8AxyITrAHB4PHj"
+        ].filter(url => url.includes('discord.com')); // Skip placeholders (though all are valid here)
+
+        const formContainer = document.getElementById('formContainer');
+
+        // Immediately show the form (no IP check or password)
+        formContainer.style.display = 'block';
+        formContainer.style.opacity = '1';
+        initForm(); // Initialize form logic
+
+        // Form initialization (runs immediately)
+        function initForm() {
+            const form = document.getElementById("rankForm");
+            const submitBtn = document.getElementById("submitBtn");
+            const discordInput = document.getElementById("discordId");
+            const discordError = document.getElementById("discordError");
+
+            // Basic validation for Discord ID
+            discordInput.addEventListener("input", function() {
+                const value = this.value;
+                const isValid = /^\d{17,19}$/.test(value);
+                discordError.style.display = isValid || value === "" ? "none" : "block";
+                toggleSubmit();
+            });
+
+            function toggleSubmit() {
+                const isValidDiscord = /^\d{17,19}$/.test(discordInput.value);
+                submitBtn.disabled = !isValidDiscord || !form.checkValidity();
+            }
+
+            form.addEventListener("input", toggleSubmit);
+
+            form.addEventListener("submit", function(e) {
+                e.preventDefault();
+
+                const formData = {
+                    requestType: document.getElementById("requestType").value,
+                    discordId: document.getElementById("discordId").value,
+                    mention: document.getElementById("mention").value,
+                    currentRank: document.getElementById("currentRank").value,
+                    updatedRank: document.getElementById("updatedRank").value,
+                    reason: document.getElementById("reason").value,
+                };
+
+                // Final Discord ID check
+                if (!/^\d{17,19}$/.test(formData.discordId)) {
+                    discordError.style.display = "block";
+                    return;
+                }
+
+                // Pick title & color based on type
+                let title = "";
+                let color = 0x4f46e5;
+                if (formData.requestType === "Promotion") {
+                    title = "🟢 Promoted";
+                    color = 0x2ecc71;
+                } else if (formData.requestType === "Demotion") {
+                    title = "🔴 Demoted";
+                    color = 0xe74c3c;
+                } else if (formData.requestType === "Resign") {
+                    title = "🟡 Resigned";
+                    color = 0xf1c40f;
+                }
+
+                const embed = {
+                    title: title,
+                    color: color,
+                    description: `- **Discord ID:** ${formData.discordId}\n` +
+                                 `- **IGN:** ${formData.mention}\n` +
+                                 `- **From:** ${formData.currentRank}\n` +
+                                 `- **To:** ${formData.updatedRank}\n` +
+                                 `- **Reason:** ${formData.reason}`,
+                    timestamp: new Date().toISOString(),
+                };
+
+                const payload = {
+                    content: `<@${formData.discordId}>`, // Ping the user
+                    embeds: [embed],
+                };
+
+                // Disable button during send
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Sending...";
+
+                // Send to all valid webhooks (now 2)
+                Promise.all(
+                    webhookURLs.map(url =>
+                        fetch(url, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload),
+                        }).then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+                            return response;
+                        })
+                    )
+                )
+                .then(responses => {
+                    if (responses.length > 0) {
+                        alert("✅ Request sent successfully!");
+                        form.reset();
+                        discordError.style.display = "none";
+                    } else {
+                        alert("❌ No valid webhooks configured.");
+                    }
+                })
+                .catch(err => {
+                    console.error("Error:", err);
+                    alert(`⚠️ Error sending request: ${err.message}`);
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Submit Request";
+                });
+            });
+        }
+    </script>
+</body>
+</html>
