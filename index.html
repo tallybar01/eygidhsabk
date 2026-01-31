@@ -4,208 +4,369 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rank Change Request</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: 
-                linear-gradient(135deg, #154D71 0%, #1C6EA4 100%), /* Base gradient */
-                url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/FullMoon2010.jpg/800px-FullMoon2010.jpg') center/cover; /* Moon texture overlay - Replace with local file: url('./moon-texture.jpg') */
-            background-blend-mode: multiply; /* Blends texture with gradient for subtle moon effect */
-            background-size: cover; /* Ensures texture covers the full viewport */
-            background-position: center;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            font-family: 'Inter', sans-serif;
             margin: 0;
-            transition: opacity 0.5s ease;
-            opacity: 0.95; /* Slight overall opacity to soften the texture if too strong */
-            position: relative; /* For absolute positioning of stars */
-            overflow: hidden; /* Prevent star overflow */
+            overflow: hidden; /* Prevent scrollbars from canvas */
+            background-color: #0f172a; /* Fallback */
         }
 
-        /* Stars Layer */
-        .stars {
-            position: absolute;
+        h1, h2, h3, button {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Canvas Background Layer */
+        #magicCanvas {
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1; /* Behind everything */
-            pointer-events: none; /* Don't interfere with clicks */
+            z-index: 0;
+            background: radial-gradient(circle at bottom right, #2e1065, #0f172a 60%, #000000);
         }
 
-        .star {
-            position: absolute;
-            border-radius: 50%;
-            animation: twinkle 2s infinite ease-in-out;
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
         }
 
-        /* Twinkle Animation */
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.6; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.2); }
+        /* Custom Scrollbar for Textarea */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
-        .form-container {
-            background: linear-gradient(135deg, #33A1E0 0%, #FFF9AF 100%); /* Custom gradient: #33A1E0 to #FFF9AF inside the form (no texture for readability) */
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            width: 350px;
-            z-index: 1; /* Above stars */
-        }
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        label {
-            font-weight: bold;
-            display: block;
-            margin-top: 10px;
-        }
-        input, select, textarea, button {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-        button {
-            background: #4f46e5;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-        button:hover {
-            background: #4338ca;
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .error {
-            color: #e74c3c;
-            font-size: 14px;
-            margin-top: 5px;
-            display: none;
+        /* Input Autofill Fix for Dark Mode */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        textarea:-webkit-autofill,
+        textarea:-webkit-autofill:hover,
+        textarea:-webkit-autofill:focus,
+        select:-webkit-autofill,
+        select:-webkit-autofill:hover,
+        select:-webkit-autofill:focus {
+            -webkit-text-fill-color: white;
+            -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.05) inset;
+            transition: background-color 5000s ease-in-out 0s;
         }
     </style>
 </head>
-<body>
-    <!-- Stars Container -->
-    <div class="stars"></div> <!-- Empty - populated by JS -->
+<body class="text-white flex items-center justify-center min-h-screen relative">
 
-    <div id="formContainer" class="form-container">
-        <h2>Staff Movements</h2>
-        <form id="rankForm">
-            <label for="requestType">Movement Type</label>
-            <select id="requestType" name="requestType" required>
-                <option value="">Select Type</option>
-                <option value="Promotion">Promotion</option>
-                <option value="Demotion">Demotion</option>
-                <option value="Resign">Resign</option>
-            </select>
+    <!-- Magical Background Canvas -->
+    <canvas id="magicCanvas"></canvas>
 
-            <label for="discordId">Discord ID</label>
-            <input type="text" id="discordId" name="discordId" placeholder="e.g., 123456789012345678" required>
-            <div id="discordError" class="error">Discord ID must be a valid number (17-19 digits).</div>
+    <!-- Main Content Container -->
+    <div class="relative z-10 w-full max-w-md p-4 animate-fade-in-up">
+        
+        <!-- Form Card -->
+        <div class="glass-card rounded-2xl p-8 w-full transition-all duration-300 hover:shadow-[0_0_40px_rgba(139,92,246,0.15)]">
+            
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 mb-4 shadow-lg shadow-indigo-500/30">
+                    <i class="ph-fill ph-shooting-star text-2xl text-white"></i>
+                </div>
+                <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Staff Movements</h2>
+                <p class="text-sm text-gray-400 mt-2">Submit official rank changes securely</p>
+            </div>
 
-            <label for="mention">IGN (In-game name)</label>
-            <input type="text" id="mention" name="mention" required>
+            <!-- Form -->
+            <form id="rankForm" class="space-y-5">
+                
+                <!-- Movement Type -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider ml-1">Movement Type</label>
+                    <div class="relative">
+                        <select id="requestType" name="requestType" required
+                            class="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 appearance-none transition duration-200 outline-none hover:bg-white/10">
+                            <option value="" class="bg-slate-900 text-gray-400">Select Type...</option>
+                            <option value="Promotion" class="bg-slate-900">Promotion</option>
+                            <option value="Demotion" class="bg-slate-900">Demotion</option>
+                            <option value="Resign" class="bg-slate-900">Resignation</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                            <i class="ph ph-caret-down"></i>
+                        </div>
+                    </div>
+                </div>
 
-            <label for="currentRank">Current Role</label>
-            <input type="text" id="currentRank" name="currentRank" required>
+                <!-- Discord ID -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider ml-1">Discord ID</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                            <i class="ph ph-discord-logo"></i>
+                        </div>
+                        <input type="text" id="discordId" name="discordId" placeholder="17-19 Digit ID" required
+                            class="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block pl-10 p-3 transition duration-200 outline-none placeholder-gray-500 hover:bg-white/10">
+                    </div>
+                    <p id="discordError" class="hidden text-xs text-red-400 mt-1 ml-1 flex items-center gap-1">
+                        <i class="ph-bold ph-warning-circle"></i> Invalid ID format (17-19 digits required)
+                    </p>
+                </div>
 
-            <label for="updatedRank">Updated Role</label>
-            <input type="text" id="updatedRank" name="updatedRank" required>
+                <!-- IGN & Current Rank (Grid) -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider ml-1">IGN</label>
+                        <input type="text" id="mention" name="mention" placeholder="Username" required
+                            class="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 transition duration-200 outline-none placeholder-gray-500 hover:bg-white/10">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider ml-1">Current Role</label>
+                        <input type="text" id="currentRank" name="currentRank" placeholder="e.g. Member" required
+                            class="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 transition duration-200 outline-none placeholder-gray-500 hover:bg-white/10">
+                    </div>
+                </div>
 
-            <label for="reason">Reason</label>
-            <textarea id="reason" name="reason" rows="3" placeholder="" required></textarea>
+                <!-- Updated Role -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider ml-1">New Role</label>
+                    <input type="text" id="updatedRank" name="updatedRank" placeholder="e.g. Officer" required
+                        class="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 transition duration-200 outline-none placeholder-gray-500 hover:bg-white/10">
+                </div>
 
-            <button type="submit" id="submitBtn">Submit Request</button>
-        </form>
+                <!-- Reason -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider ml-1">Reason</label>
+                    <textarea id="reason" name="reason" rows="3" placeholder="Explain the reason for this change..." required
+                        class="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 transition duration-200 outline-none placeholder-gray-500 hover:bg-white/10 resize-none"></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn" 
+                    class="w-full group relative flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 transition-all duration-300 shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <i class="ph-bold ph-paper-plane-right group-hover:translate-x-1 transition-transform"></i>
+                    </span>
+                    <span id="btnText">Submit Request</span>
+                    
+                    <!-- Loading Spinner (Hidden by default) -->
+                    <svg id="loadingSpinner" class="hidden animate-spin ml-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+        
+        <!-- Footer -->
+        <p class="text-center text-xs text-gray-500 mt-6 font-light">
+            Secure Staff Portal &copy; 2024
+        </p>
     </div>
 
-    <!-- Inline JS for Dynamic Stars -->
+    <!-- Magical Background Script -->
     <script>
-        // Generate 50 random twinkling stars
-        document.addEventListener('DOMContentLoaded', function() {
-            const starsContainer = document.querySelector('.stars');
-            const numStars = 499; // Change this to add more (e.g., 100)
+        const canvas = document.getElementById('magicCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let particles = [];
+        
+        // Configuration
+        const particleCount = 100;
+        const connectionDistance = 100;
+        const mouseDistance = 150;
 
-            for (let i = 0; i < numStars; i++) {
-                const star = document.createElement('div');
-                star.classList.add('star');
+        let mouse = { x: null, y: null };
 
-                // Random position
-                const top = Math.random() * 100;
-                const left = Math.random() * 100;
-                star.style.top = top + '%';
-                star.style.left = left + '%';
+        // Resize handling
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
 
-                // Random size (1-3px)
-                const size = Math.random() * 2 + 1; // 1 to 3
-                star.style.width = size + 'px';
-                star.style.height = size + 'px';
+        window.addEventListener('resize', resize);
+        resize();
 
-                // Random color: 80% white, 20% yellow
-                star.style.background = (Math.random() < 0.8) ? '#fff' : '#ffd700';
-
-                // Random animation delay and duration for variety
-                const delay = Math.random() * 2; // 0-2s
-                const duration = Math.random() * 2 + 1; // 1-3s
-                star.style.animationDelay = delay + 's';
-                star.style.animationDuration = duration + 's';
-
-                starsContainer.appendChild(star);
-            }
+        // Mouse interaction
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
         });
+
+        window.addEventListener('mouseout', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        // Particle Class
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.5; // Slow movement
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2;
+                this.color = `rgba(${Math.random() * 50 + 200}, ${Math.random() * 50 + 200}, 255, ${Math.random() * 0.5 + 0.1})`; // Bluish/White
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Wrap around screen
+                if (this.x < 0) this.x = width;
+                if (this.x > width) this.x = 0;
+                if (this.y < 0) this.y = height;
+                if (this.y > height) this.y = 0;
+
+                // Mouse repulsion/attraction (subtle)
+                if (mouse.x != null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < mouseDistance) {
+                        const forceDirectionX = dx / distance;
+                        const forceDirectionY = dy / distance;
+                        const force = (mouseDistance - distance) / mouseDistance;
+                        const direction = -1; // -1 to repel, 1 to attract
+                        
+                        this.vx += forceDirectionX * force * 0.05 * direction;
+                        this.vy += forceDirectionY * force * 0.05 * direction;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        // Initialize Particles
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        initParticles();
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw particles
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            // Draw connections (Constellation effect)
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a; b < particles.length; b++) {
+                    let dx = particles[a].x - particles[b].x;
+                    let dy = particles[a].y - particles[b].y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < connectionDistance) {
+                        ctx.strokeStyle = `rgba(147, 197, 253, ${1 - distance / connectionDistance * 0.5})`; // Blue-ish lines
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        animate();
     </script>
 
-    <!-- Form Logic JS -->
+    <!-- Form Logic Script -->
     <script>
-        // WARNING: Client-side only – whitelist and secrets are visible! Not secure for public use.
-        // Change the webhook URLs as needed.
-
+        // Webhook Configuration
+        // Note: In a production app, never expose webhooks on the client side.
         const webhookURLs = [
             "https://discord.com/api/webhooks/1430627421216051262/UshFQbkv4ZVhMSbFDsk-cFzGr6N3Lql72Sj9iSR_g4aMfY697IyJZlt1ukIPb5jOfuJO",
             "https://discord.com/api/webhooks/1421382701734301726/Mf7VZtePkcAapEEbj16bxdJY5w_bX1-ALHreKTMKcxV3VhN14_hKI_8AxyITrAHB4PHj"
-        ].filter(url => url.includes('discord.com')); // Skip placeholders (though all are valid here)
+        ];
 
-        const formContainer = document.getElementById('formContainer');
-
-        // Immediately show the form (no IP check or password)
-        formContainer.style.display = 'block';
-        formContainer.style.opacity = '1';
-        initForm(); // Initialize form logic
-
-        // Form initialization (runs immediately)
-        function initForm() {
+        document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById("rankForm");
             const submitBtn = document.getElementById("submitBtn");
+            const btnText = document.getElementById("btnText");
+            const loadingSpinner = document.getElementById("loadingSpinner");
             const discordInput = document.getElementById("discordId");
             const discordError = document.getElementById("discordError");
+            const requestTypeSelect = document.getElementById("requestType");
 
-            // Basic validation for Discord ID
+            // Real-time Validation for Discord ID
             discordInput.addEventListener("input", function() {
                 const value = this.value;
                 const isValid = /^\d{17,19}$/.test(value);
-                discordError.style.display = isValid || value === "" ? "none" : "block";
-                toggleSubmit();
+                
+                if (value.length > 0) {
+                    if (isValid) {
+                        discordError.classList.add("hidden");
+                        this.classList.remove("border-red-500", "focus:border-red-500", "focus:ring-red-500");
+                        this.classList.add("border-green-500/50", "focus:border-green-500", "focus:ring-green-500");
+                    } else {
+                        discordError.classList.remove("hidden");
+                        this.classList.add("border-red-500", "focus:border-red-500", "focus:ring-red-500");
+                        this.classList.remove("border-green-500/50", "focus:border-green-500", "focus:ring-green-500");
+                    }
+                } else {
+                    discordError.classList.add("hidden");
+                    this.classList.remove("border-red-500", "focus:border-red-500", "focus:ring-red-500", "border-green-500/50", "focus:border-green-500", "focus:ring-green-500");
+                }
+                
+                checkFormValidity();
             });
 
-            function toggleSubmit() {
+            // General form validation check
+            form.addEventListener('input', checkFormValidity);
+
+            function checkFormValidity() {
                 const isValidDiscord = /^\d{17,19}$/.test(discordInput.value);
-                submitBtn.disabled = !isValidDiscord || !form.checkValidity();
+                const isFormValid = form.checkValidity() && isValidDiscord;
+                submitBtn.disabled = !isFormValid;
+                
+                if (isFormValid) {
+                    submitBtn.classList.remove("opacity-50", "cursor-not-allowed");
+                } else {
+                    submitBtn.classList.add("opacity-50", "cursor-not-allowed");
+                }
             }
 
-            form.addEventListener("input", toggleSubmit);
-
+            // Handle Submission
             form.addEventListener("submit", function(e) {
                 e.preventDefault();
+
+                // Prevent double submission
+                if (submitBtn.disabled) return;
 
                 const formData = {
                     requestType: document.getElementById("requestType").value,
@@ -216,80 +377,110 @@
                     reason: document.getElementById("reason").value,
                 };
 
-                // Final Discord ID check
-                if (!/^\d{17,19}$/.test(formData.discordId)) {
-                    discordError.style.display = "block";
-                    return;
-                }
+                // UI Loading State
+                setLoading(true);
 
-                // Pick title & color based on type
-                let title = "";
-                let color = 0x4f46e5;
-                if (formData.requestType === "Promotion") {
-                    title = "🟢 Promoted";
-                    color = 0x2ecc71;
-                } else if (formData.requestType === "Demotion") {
-                    title = "🔴 Demoted";
-                    color = 0xe74c3c;
-                } else if (formData.requestType === "Resign") {
-                    title = "🟡 Resigned";
-                    color = 0xf1c40f;
+                // Prepare Embed Data
+                let title = "📄 Staff Update";
+                let color = 0x6366f1; // Default Indigo
+
+                switch(formData.requestType) {
+                    case "Promotion":
+                        title = "🟢 Promotion Request";
+                        color = 0x2ecc71; // Green
+                        break;
+                    case "Demotion":
+                        title = "🔴 Demotion Request";
+                        color = 0xe74c3c; // Red
+                        break;
+                    case "Resign":
+                        title = "🟡 Resignation";
+                        color = 0xf1c40f; // Yellow
+                        break;
                 }
 
                 const embed = {
                     title: title,
                     color: color,
-                    description: `- **Discord ID:** ${formData.discordId}\n` +
-                                 `- **IGN:** ${formData.mention}\n` +
-                                 `- **From:** ${formData.currentRank}\n` +
-                                 `- **To:** ${formData.updatedRank}\n` +
-                                 `- **Reason:** ${formData.reason}`,
+                    fields: [
+                        { name: "Discord ID", value: formData.discordId, inline: true },
+                        { name: "IGN", value: formData.mention, inline: true },
+                        { name: "Movement", value: `${formData.currentRank} ➔ ${formData.updatedRank}`, inline: false },
+                        { name: "Reason", value: formData.reason, inline: false }
+                    ],
+                    footer: { text: "Submitted via Secure Portal" },
                     timestamp: new Date().toISOString(),
                 };
 
                 const payload = {
-                    content: `<@${formData.discordId}>`, // Ping the user
+                    content: `Staff update for <@${formData.discordId}>`, 
                     embeds: [embed],
                 };
 
-                // Disable button during send
-                submitBtn.disabled = true;
-                submitBtn.textContent = "Sending...";
-
-                // Send to all valid webhooks (now 2)
+                // Send to Webhooks
                 Promise.all(
-                    webhookURLs.map(url =>
+                    webhookURLs.map(url => 
                         fetch(url, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify(payload),
-                        }).then(response => {
-                            if (!response.ok) {
-                                throw new Error(`HTTP ${response.status}`);
-                            }
-                            return response;
+                        }).then(res => {
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            return res;
                         })
                     )
                 )
                 .then(responses => {
-                    if (responses.length > 0) {
-                        alert("✅ Request sent successfully!");
-                        form.reset();
-                        discordError.style.display = "none";
-                    } else {
-                        alert("❌ No valid webhooks configured.");
-                    }
+                    // Success UI
+                    showToast("success", "Request sent successfully!");
+                    form.reset();
+                    // Reset styled inputs
+                    discordInput.classList.remove("border-green-500/50", "focus:border-green-500", "focus:ring-green-500");
                 })
                 .catch(err => {
-                    console.error("Error:", err);
-                    alert(`⚠️ Error sending request: ${err.message}`);
+                    console.error("Submission Error:", err);
+                    showToast("error", "Failed to send request. Check console.");
                 })
                 .finally(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = "Submit Request";
+                    setLoading(false);
+                    checkFormValidity();
                 });
             });
-        }
+
+            function setLoading(isLoading) {
+                submitBtn.disabled = isLoading;
+                if (isLoading) {
+                    btnText.textContent = "Sending...";
+                    loadingSpinner.classList.remove("hidden");
+                } else {
+                    btnText.textContent = "Submit Request";
+                    loadingSpinner.classList.add("hidden");
+                }
+            }
+
+            // Simple Toast Notification System
+            function showToast(type, message) {
+                const toast = document.createElement("div");
+                const icon = type === 'success' ? 'ph-check-circle' : 'ph-warning-circle';
+                const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+                
+                toast.className = `fixed top-6 right-6 ${bgColor} text-white px-6 py-3 rounded-lg shadow-xl transform transition-all duration-300 translate-y-[-100%] opacity-0 flex items-center gap-3 z-50 font-medium`;
+                toast.innerHTML = `<i class="ph-bold ${icon} text-xl"></i> ${message}`;
+                
+                document.body.appendChild(toast);
+                
+                // Animate In
+                requestAnimationFrame(() => {
+                    toast.classList.remove("translate-y-[-100%]", "opacity-0");
+                });
+
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    toast.classList.add("translate-y-[-100%]", "opacity-0");
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        });
     </script>
 </body>
 </html>
